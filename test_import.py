@@ -9,11 +9,13 @@ try:
     products = read_products_excel().to_dict(orient='records')
 
     for product in products:
-        collection.update_one(
+        result = collection.update_one(
             {"product_code": product["product_code"]},
             {"$set": product},
             upsert=True
         )
+        print(result)
+
     print("Imported products")
 finally:
     mongodb.close_connection()
