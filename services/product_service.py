@@ -1,3 +1,5 @@
+import re
+
 from models.product import Product
 from services.excel_service import read_products_excel
 
@@ -47,3 +49,27 @@ class ProductService:
             "updated": updated_count,
             "unchanged": unchanged_count
         }
+
+    def get_all_products(self):
+        products = self.product_collection.find({})
+        return list(products)
+
+    def search_products(self, keyword):
+        keyword = keyword.strip()
+
+        if not keyword:
+            return []
+
+        escaped_keyword = re.escape(keyword)
+
+        query = {
+            "$or": [
+                { "product_code": { "$regex": escaped_keyword, "$options": "i" } },
+                { "name": { "$regex": escaped_keyword, "$options": "i" } },
+                { "brand": { "$regex": escaped_keyword, "$options": "i" } },
+                { "category": { "$regex": escaped_keyword, "$options": "i" } },
+            ]
+        }
+
+        products = self.product_collection.find(query)
+        return list(products)

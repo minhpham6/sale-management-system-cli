@@ -1,5 +1,6 @@
-# from database.mongodb import MongoDB
-#
+from database.mongodb import MongoDB
+from services.product_service import ProductService
+
 # mongodb = MongoDB()
 #
 # try:
@@ -75,20 +76,16 @@
 #     mongodb.close_connection()
 
 
-from models.product import Product
 
-product = Product(
-    "P1001",
-    "iPhone 15 Pro Max",
-    "Điện thoại",
-    "Apple",
-    "Chiếc",
-    29990000,
-    45
-)
 
-print(product.name)
-print(product.unit_price)
+mongodb = MongoDB()
+product_collection = mongodb.get_collection("products")
+product_service = ProductService(product_collection)
+products = product_service.get_all_products()
+print(products)
 
-print(product.to_dict())
+print(type(products))
+print(len(products))
+print(products[0])
 
+print(product_service.search_products(input("Enter keyword: ")))
