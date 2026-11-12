@@ -10,7 +10,7 @@ try:
 
     product_service = ProductService(products_collection)
 
-    result = product_service.import_products()
+    result = product_service.import_products_mongodb()
 
     print("Import result:")
     print(result)

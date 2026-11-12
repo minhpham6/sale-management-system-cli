@@ -7,7 +7,7 @@ class ProductService:
     def __init__(self, product_collection):
         self.product_collection = product_collection
 
-    def import_products(self):
+    def import_products_mongodb(self):
         df = read_products_excel()
 
         # Chuyển DataFrame thành danh sách dictionary. Thay các giá trị NaN bằng None
@@ -73,3 +73,30 @@ class ProductService:
 
         products = self.product_collection.find(query)
         return list(products)
+
+    def is_product_code_exist(self, product_code):
+        existing_product = self.product_collection.find_one({
+            "product_code": product_code
+        })
+
+        return existing_product is not None
+
+    def add_product(self, product):
+        if self.is_product_code_exist(product.product_code):
+            return False
+
+        self.product_collection.insert_one(product.to_dict())
+        return True
+
+    def update_product_price(self, product_code, new_price):
+        result = self.product_collection.update_one(
+            {"product_code": product_code},
+            {"$set": {"unit_price": new_price}}
+        )
+
+        return result.matched_count > 0
+
+    def get_product_by_code(self, product_code):
+        return self.product_collection.find_one({
+            "product_code": product_code
+        })
