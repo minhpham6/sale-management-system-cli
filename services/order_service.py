@@ -1,4 +1,5 @@
-from models.order import Order
+import pymongo
+
 
 class OrderService:
     def __init__(self, client, order_collection, product_collection):
@@ -31,22 +32,10 @@ class OrderService:
 
         return True
 
+    def get_order_by_code(self, order_code):
+        return self.order_collection.find_one({
+            "order_code": order_code
+        })
 
-
-"""
-{
-    "order_code": "ORD001",
-    "customer_name": "Nguyen Van A",
-    "order_date": datetime.now(),
-    "items": [
-        {
-            "product_code": "P1001",
-            "name": "iPhone 15",
-            "quantity": 2,
-            "unit_price": 10000000,
-            "subtotal": 20000000
-        }
-    ],
-    "total_amount": 20000000
-}
-"""
+    def get_all_orders(self):
+        return self.order_collection.find({}).sort("order_date", pymongo.DESCENDING)

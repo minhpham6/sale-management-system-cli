@@ -4,6 +4,10 @@ from database.mongodb import MongoDB
 from services.product_service import ProductService
 from services.order_service import OrderService
 from datetime import datetime
+from prettytable import PrettyTable
+from services.excel_service import export_products_excel, export_orders_excel
+
+
 def add_product_cli(product_service):
     print("\n===== ADD NEW PRODUCT =====")
 
@@ -89,9 +93,21 @@ def create_order_cli(product_service, order_service):
             print("Product not found!")
             return
 
-        print(f"Product: {product['name']}")
-        print(f"Unit price: {product['unit_price']:,}")
-        print(f"Available stock: {product['stock']}")
+        # print(f"Product: {product['name']}")
+        # print(f"Unit price: {product['unit_price']:,}")
+        # print(f"Available stock: {product['stock']}")
+
+        table = PrettyTable()
+        table.field_names = ["Product Code", "Product", "Unit Price", "Stock"]
+
+        table.add_row([
+            product["product_code"],
+            product["name"],
+            f"{product['unit_price']:,.0f}",
+            product["stock"]
+        ])
+
+        print(table)
 
         try:
             quantity = int(input("Quantity: "))
@@ -143,8 +159,138 @@ def create_order_cli(product_service, order_service):
     try:
         if order_service.create_order(order):
             print("Order created successfully!")
+            display_invoice_cli(order_service, order_code)
     except ValueError as e:
         print(f"Failed to create order: {e}")
+
+def display_invoice_cli(order_service, order_code):
+    order = order_service.get_order_by_code(order_code)
+    if not order:
+        print("Order not found!")
+        return
+
+    print("\n========== INVOICE ==========")
+
+    print(f"Order code: {order['order_code']}")
+    print(f"Customer: {order['customer_name']}")
+    print(f"Order date: {order['order_date']}")
+
+    table = PrettyTable()
+    table.field_names = [
+        "Product",
+        "Quantity",
+        "Unit Price",
+        "Subtotal"
+    ]
+
+    for item in order["items"]:
+        table.add_row([
+            item["name"],
+            item["quantity"],
+            f"{item['unit_price']:,.0f}",
+            f"{item['subtotal']:,.0f}"
+        ])
+
+    print(table)
+    print(f"TOTAL AMOUNT: {order['total_amount']:,.0f}")
+    print("=============================")
+
+def display_orders_cli(order_service):
+    print("\n===== ORDER LIST =====")
+
+    orders = order_service.get_all_orders()
+
+    if not orders:
+        print("No orders found!")
+        return
+
+    table = PrettyTable()
+    table.field_names = [
+        "Order Code",
+        "Customer",
+        "Order Date",
+        "Items",
+        "Total Amount"
+    ]
+
+    for order in orders:
+        table.add_row([
+            order["order_code"],
+            order["customer_name"],
+            order["order_date"].strftime("%d/%m/%Y %H:%M:%S"),
+            len(order["items"]),
+            f"{order['total_amount']:,.0f}"
+        ])
+
+    print(table)
+
+def revenue_statistics_cli(order_service):
+    print("\n===== REVENUE STATISTICS =====")
+
+    orders = order_service.get_all_orders()
+
+    if not orders:
+        print("No orders found!")
+        return
+
+    total_orders = len(orders)
+    total_revenue = sum(order["total_amount"] for order in orders)
+    average_revenue = total_revenue / total_orders
+
+    monthly_revenue = {}
+
+    for order in orders:
+        month = order["order_date"].strftime("%Y-%m")
+
+        if month not in monthly_revenue:
+            monthly_revenue[month] = 0
+
+        monthly_revenue[month] += order["total_amount"]
+
+    print(f"Total orders: {total_orders}")
+    print(f"Total revenue: {total_revenue:,.0f}")
+    print(f"Average order value: {average_revenue:,.0f}")
+
+    table = PrettyTable()
+    table.field_names = ["Month", "Revenue"]
+
+    for month, revenue in sorted(monthly_revenue.items()):
+        table.add_row([month, f"{revenue:,.0f}"])
+
+    print("\n===== MONTHLY REVENUE =====")
+    print(table)
+
+def export_products_cli(product_service):
+    print("\n===== EXPORT PRODUCTS TO EXCEL =====")
+
+    products = product_service.get_all_products()
+
+    if not products:
+        print("No products found!")
+        return
+
+    try:
+        file_path = export_products_excel(products)
+        print(f"Products exported successfully: {file_path}")
+    except Exception as e:
+        print(f"Failed to export products: {e}")
+
+
+def export_orders_cli(order_service):
+    print("\n===== EXPORT ORDERS TO EXCEL =====")
+
+    orders = order_service.get_all_orders()
+
+    if not orders:
+        print("No orders found!")
+        return
+
+    try:
+        file_path = export_orders_excel(orders)
+        print(f"Orders exported successfully: {file_path}")
+
+    except Exception as e:
+        print(f"Failed to export orders: {e}")
 
 def main():
     mongodb = MongoDB()
@@ -161,7 +307,9 @@ def main():
             order_collection,
             product_collection
         )
-        create_order_cli(product_service, order_service)
+        # create_order_cli(product_service, order_service)
+        # display_orders_cli(order_service)
+        export_orders_cli(order_service)
     except Exception as e:
         print(f"An error occurred!: {e}")
 
@@ -170,4 +318,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
