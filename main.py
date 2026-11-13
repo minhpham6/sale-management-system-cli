@@ -3,7 +3,7 @@ from models.order import Order
 from database.mongodb import MongoDB
 from services.product_service import ProductService
 from services.order_service import OrderService
-
+from datetime import datetime
 def add_product_cli(product_service):
     print("\n===== ADD NEW PRODUCT =====")
 
@@ -122,11 +122,29 @@ def create_order_cli(product_service, order_service):
         print(f"Subtotal: {subtotal:,}")
 
         choice = input("Add another product? (y/n): ").strip().lower()
-
         if choice != "y":
             break
 
     print(f"Total amount: {total_amount:,}")
+
+    order_code = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    order = Order(
+        order_code=order_code,
+        customer_name=customer_name,
+        items=items,
+        total_amount=total_amount
+    )
+
+    confirm = input("Confirm order? (y/n): ").strip().lower()
+    if confirm != "y":
+        print("Order cancelled!")
+        return
+
+    try:
+        if order_service.create_order(order):
+            print("Order created successfully!")
+    except ValueError as e:
+        print(f"Failed to create order: {e}")
 
 def main():
     mongodb = MongoDB()
