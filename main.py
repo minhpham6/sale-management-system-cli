@@ -1,11 +1,120 @@
-from models.product import Product
-from models.order import Order
-from database.mongodb import MongoDB
-from services.product_service import ProductService
-from services.order_service import OrderService
 from datetime import datetime
+
 from prettytable import PrettyTable
-from services.excel_service import export_products_excel, export_orders_excel
+
+from database.mongodb import MongoDB
+from models.order import Order
+from models.product import Product
+from services.excel_service import (
+    export_orders_excel,
+    export_products_excel,
+    read_products_excel,
+)
+from services.order_service import OrderService
+from services.product_service import ProductService
+
+
+def read_products_excel_cli():
+    print("\n===== READ PRODUCTS FROM EXCEL =====")
+
+    try:
+        df = read_products_excel()
+
+        if df.empty:
+            print("Excel file contains no products!")
+            return
+
+        table = PrettyTable()
+        table.field_names = list(df.columns)
+
+        for row in df.itertuples(index=False, name=None):
+            table.add_row(row)
+
+        print(table)
+        print(f"Total products in Excel: {len(df)}")
+
+    except Exception as e:
+        print(f"Failed to read Excel file: {e}")
+
+
+def display_products_cli(product_service):
+    print("\n===== PRODUCT LIST =====")
+
+    products = product_service.get_all_products()
+
+    if not products:
+        print("No products found!")
+        return
+
+    table = PrettyTable()
+    table.field_names = [
+        "Product Code", "Name", "Category", "Brand",
+        "Unit", "Unit Price", "Stock"
+    ]
+
+    for product in products:
+        table.add_row([
+            product["product_code"],
+            product["name"],
+            product["category"],
+            product["brand"],
+            product["unit"],
+            f"{product['unit_price']:,.0f}",
+            product["stock"]
+        ])
+
+    print(table)
+
+
+def search_products_cli(product_service):
+    print("\n===== SEARCH PRODUCTS =====")
+
+    keyword = input("Enter product code, name, brand or category: ").strip()
+
+    if not keyword:
+        print("Search keyword cannot be empty!")
+        return
+
+    products = product_service.search_products(keyword)
+
+    if not products:
+        print("No matching products found!")
+        return
+
+    table = PrettyTable()
+    table.field_names = [
+        "Product Code", "Name", "Category", "Brand",
+        "Unit", "Unit Price", "Stock"
+    ]
+
+    for product in products:
+        table.add_row([
+            product["product_code"],
+            product["name"],
+            product["category"],
+            product["brand"],
+            product["unit"],
+            f"{product['unit_price']:,.0f}",
+            product["stock"]
+        ])
+
+    print(table)
+
+
+def import_products_cli(product_service):
+    print("\n===== IMPORT PRODUCTS TO MONGODB =====")
+
+    try:
+        result = product_service.import_products_mongodb()
+
+        print("Product import completed!")
+        print(f"Total products: {result['total']}")
+        print(f"Inserted: {result['inserted']}")
+        print(f"Updated: {result['updated']}")
+        print(f"Unchanged: {result['unchanged']}")
+
+    except Exception as e:
+        print(f"Failed to import products: {e}")
 
 
 def add_product_cli(product_service):
@@ -47,10 +156,12 @@ def add_product_cli(product_service):
     else:
         print("Product code already exists!")
 
+
 def update_product_price_cli(product_service):
     print("\n===== UPDATE PRODUCT PRICE =====")
 
     product_code = input("Product code: ").strip()
+
     if not product_code:
         print("Product code cannot be empty!")
         return
@@ -74,10 +185,12 @@ def update_product_price_cli(product_service):
     else:
         print("Failed to update product price!")
 
+
 def create_order_cli(product_service, order_service):
     print("\n===== CREATE ORDER =====")
 
     customer_name = input("Customer name: ").strip()
+
     if not customer_name:
         print("Customer name cannot be empty!")
         return
@@ -93,20 +206,14 @@ def create_order_cli(product_service, order_service):
             print("Product not found!")
             return
 
-        # print(f"Product: {product['name']}")
-        # print(f"Unit price: {product['unit_price']:,}")
-        # print(f"Available stock: {product['stock']}")
-
         table = PrettyTable()
         table.field_names = ["Product Code", "Product", "Unit Price", "Stock"]
-
         table.add_row([
             product["product_code"],
             product["name"],
             f"{product['unit_price']:,.0f}",
             product["stock"]
         ])
-
         print(table)
 
         try:
@@ -119,7 +226,7 @@ def create_order_cli(product_service, order_service):
             print("Quantity must be greater than 0!")
             return
 
-        if quantity > product['stock']:
+        if quantity > product["stock"]:
             print("Quantity exceeds available stock!")
             return
 
@@ -135,13 +242,14 @@ def create_order_cli(product_service, order_service):
 
         items.append(item)
         total_amount += subtotal
-        print(f"Subtotal: {subtotal:,}")
+        print(f"Subtotal: {subtotal:,.0f}")
 
         choice = input("Add another product? (y/n): ").strip().lower()
+
         if choice != "y":
             break
 
-    print(f"Total amount: {total_amount:,}")
+    print(f"Total amount: {total_amount:,.0f}")
 
     order_code = f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}"
     order = Order(
@@ -152,6 +260,7 @@ def create_order_cli(product_service, order_service):
     )
 
     confirm = input("Confirm order? (y/n): ").strip().lower()
+
     if confirm != "y":
         print("Order cancelled!")
         return
@@ -163,25 +272,29 @@ def create_order_cli(product_service, order_service):
     except ValueError as e:
         print(f"Failed to create order: {e}")
 
-def display_invoice_cli(order_service, order_code):
+
+def display_invoice_cli(order_service):
+    print("\n===== DISPLAY INVOICE =====")
+
+    order_code = input("Enter order code: ").strip()
+
+    if not order_code:
+        print("Order code cannot be empty!")
+        return
+
     order = order_service.get_order_by_code(order_code)
+
     if not order:
         print("Order not found!")
         return
 
     print("\n========== INVOICE ==========")
-
     print(f"Order code: {order['order_code']}")
     print(f"Customer: {order['customer_name']}")
-    print(f"Order date: {order['order_date']}")
+    print(f"Order date: {order['order_date'].strftime('%d/%m/%Y %H:%M:%S')}")
 
     table = PrettyTable()
-    table.field_names = [
-        "Product",
-        "Quantity",
-        "Unit Price",
-        "Subtotal"
-    ]
+    table.field_names = ["Product", "Quantity", "Unit Price", "Subtotal"]
 
     for item in order["items"]:
         table.add_row([
@@ -195,6 +308,7 @@ def display_invoice_cli(order_service, order_code):
     print(f"TOTAL AMOUNT: {order['total_amount']:,.0f}")
     print("=============================")
 
+
 def display_orders_cli(order_service):
     print("\n===== ORDER LIST =====")
 
@@ -206,11 +320,7 @@ def display_orders_cli(order_service):
 
     table = PrettyTable()
     table.field_names = [
-        "Order Code",
-        "Customer",
-        "Order Date",
-        "Items",
-        "Total Amount"
+        "Order Code", "Customer", "Order Date", "Product Types", "Total Amount"
     ]
 
     for order in orders:
@@ -223,6 +333,7 @@ def display_orders_cli(order_service):
         ])
 
     print(table)
+
 
 def revenue_statistics_cli(order_service):
     print("\n===== REVENUE STATISTICS =====")
@@ -260,6 +371,7 @@ def revenue_statistics_cli(order_service):
     print("\n===== MONTHLY REVENUE =====")
     print(table)
 
+
 def export_products_cli(product_service):
     print("\n===== EXPORT PRODUCTS TO EXCEL =====")
 
@@ -288,33 +400,85 @@ def export_orders_cli(order_service):
     try:
         file_path = export_orders_excel(orders)
         print(f"Orders exported successfully: {file_path}")
-
     except Exception as e:
         print(f"Failed to export orders: {e}")
 
+
+def display_menu():
+    print("\n========== SALES MANAGEMENT SYSTEM ==========")
+    print("1.  Read products from Excel")
+    print("2.  Import products to MongoDB")
+    print("3.  Display products")
+    print("4.  Search products")
+    print("5.  Add new product")
+    print("6.  Update product price")
+    print("7.  Create order")
+    print("8.  Display invoice")
+    print("9.  Display orders")
+    print("10. Revenue statistics")
+    print("11. Export products to Excel")
+    print("12. Export orders to Excel")
+    print("0.  Exit")
+    print("=============================================")
+
+
 def main():
     mongodb = MongoDB()
+
     try:
         mongodb.check_connection()
-        product_collection = mongodb.get_collection("products")
-        product_service = ProductService(product_collection)
-        # add_product_cli(product_service)
-        # update_product_price_cli(product_service)
+        print("Connected to MongoDB successfully!")
 
+        product_collection = mongodb.get_collection("products")
         order_collection = mongodb.get_collection("orders")
+
+        product_service = ProductService(product_collection)
         order_service = OrderService(
             mongodb.client,
             order_collection,
             product_collection
         )
-        # create_order_cli(product_service, order_service)
-        # display_orders_cli(order_service)
-        export_orders_cli(order_service)
+
+        while True:
+            display_menu()
+            choice = input("Enter your choice: ").strip()
+
+            if choice == "1":
+                read_products_excel_cli()
+            elif choice == "2":
+                import_products_cli(product_service)
+            elif choice == "3":
+                display_products_cli(product_service)
+            elif choice == "4":
+                search_products_cli(product_service)
+            elif choice == "5":
+                add_product_cli(product_service)
+            elif choice == "6":
+                update_product_price_cli(product_service)
+            elif choice == "7":
+                create_order_cli(product_service, order_service)
+            elif choice == "8":
+                display_invoice_cli(order_service)
+            elif choice == "9":
+                display_orders_cli(order_service)
+            elif choice == "10":
+                revenue_statistics_cli(order_service)
+            elif choice == "11":
+                export_products_cli(product_service)
+            elif choice == "12":
+                export_orders_cli(order_service)
+            elif choice == "0":
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid choice! Please enter a number from 0 to 12.")
+
     except Exception as e:
-        print(f"An error occurred!: {e}")
+        print(f"An error occurred: {e}")
 
     finally:
         mongodb.close_connection()
+
 
 if __name__ == "__main__":
     main()
