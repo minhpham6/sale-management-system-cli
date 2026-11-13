@@ -38,4 +38,4 @@ class OrderService:
         })
 
     def get_all_orders(self):
-        return self.order_collection.find({}).sort("order_date", pymongo.DESCENDING)
+        return list(self.order_collection.find({}).sort("order_date", pymongo.DESCENDING))
