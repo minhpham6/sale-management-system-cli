@@ -273,10 +273,11 @@ def create_order_cli(product_service, order_service):
         print(f"Failed to create order: {e}")
 
 
-def display_invoice_cli(order_service):
+def display_invoice_cli(order_service, order_code=None):
     print("\n===== DISPLAY INVOICE =====")
 
-    order_code = input("Enter order code: ").strip()
+    if order_code is None:
+        order_code = input("Enter order code: ").strip()
 
     if not order_code:
         print("Order code cannot be empty!")
