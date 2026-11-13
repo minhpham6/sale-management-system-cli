@@ -3,6 +3,7 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 EXCEL_FILE_DIR = BASE_DIR / "data" / "products.xlsx"
+EXPORT_DIR = BASE_DIR / "exports"
 
 def read_products_excel():
     df = pd.read_excel(
@@ -14,9 +15,9 @@ def read_products_excel():
     return df
 
 def export_products_excel(products):
-    export_dir = BASE_DIR / "data" / "exports"
+    export_dir = BASE_DIR / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
-    filepath = export_dir / "products.xlsx"
+    filepath = EXPORT_DIR / "products.xlsx"
     df = pd.DataFrame(products)
 
     if "_id" in df.columns:
@@ -44,9 +45,8 @@ def export_orders_excel(orders):
 
     df = pd.DataFrame(rows)
 
-    export_dir = BASE_DIR / "data" / "exports"
-    export_dir.mkdir(parents=True, exist_ok=True)
-    file_path = export_dir / "orders.xlsx"
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = EXPORT_DIR / "orders.xlsx"
     df.to_excel(file_path, index=False, engine="openpyxl")
 
     return file_path
